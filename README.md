@@ -28,29 +28,20 @@ config.yaml        - business identity, hours, services
 receipts_out/      - generated receipt PDFs (not committed)
 ```
 
-Each of `customers`, `leads`, `appointments`, `receipts` lives in its own
-SQLite file under `DB/`. There are no foreign keys between them; the
-`Features` modules check cross-references (e.g. that a customer exists)
+Each of `customers`, `leads`, `appointments`, `receipts` lives in its own  
+SQLite file under `DB/`. There are no foreign keys between them; the  
+`Features` modules check cross-references (e.g. that a customer exists)  
 in Python instead.
-
-## Run the check
-
-```
-python3 check_booking.py
-```
-
-Exercises the double-booking rules (overlap, opening hours, cancel-then-
-rebook, unknown/deactivated customers) and receipt numbering against a
-real, throwaway `Database`.
 
 ## Known limits
 
 - Booking is check-then-insert, not atomic — fine for one user, needs a
-  transaction if this becomes multi-user.
+transaction if this becomes multi-user.
 - Lead-to-customer conversion writes to two separate database files and
-  cannot be a single transaction; see the comment in `Features/leads.py`.
+cannot be a single transaction; see the comment in `Features/leads.py`.
 - Receipt PDFs use core Helvetica, which is Latin-1 only — a Hebrew
-  customer name will not render correctly.
+customer name will not render correctly.
 - `DB/*.db` files are currently tracked in git. Once real customer data is
-  in them, consider `git rm --cached` on those files so personal data
-  stops going into git history.
+in them, consider `git rm --cached` on those files so personal data
+stops going into git history.
+
