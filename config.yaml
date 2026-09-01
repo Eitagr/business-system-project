@@ -1,0 +1,40 @@
+# Everything specific to one business lives here. Nothing else needs editing
+# to run the system for a different business.
+
+business:
+  name: Atlas Studio
+  description: Small business appointment and customer management
+  location: 12 Herzl St, Tel Aviv
+  phone: 03-555-0100
+  currency: ILS
+
+# Day keys are lowercase English weekday names. Use `null` for a closed day.
+# A booking must start no earlier than the opening time and finish no later
+# than the closing time.
+hours:
+  sunday: ["09:00", "17:00"]
+  monday: ["09:00", "17:00"]
+  tuesday: ["09:00", "17:00"]
+  wednesday: ["09:00", "17:00"]
+  thursday: ["09:00", "17:00"]
+  friday: ["09:00", "13:00"]
+  saturday: null
+
+# Candidate start times in the booking menu are spaced this many minutes
+# apart. A slot is offered only if the whole service fits before closing
+# and does not overlap a scheduled appointment.
+booking:
+  slot_minutes: 15
+
+# `minutes` decides when an appointment ends; `price` is the default amount
+# suggested when issuing a receipt.
+services:
+  - name: Consultation
+    minutes: 60
+    price: 250.0
+  - name: Follow-up
+    minutes: 30
+    price: 150.0
+  - name: Full session
+    minutes: 90
+    price: 400.0

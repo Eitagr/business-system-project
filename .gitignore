@@ -1,0 +1,35 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+
+# Virtual environments and secrets
+.venv/
+venv/
+.env
+.env.*
+
+# Tests and tooling
+.pytest_cache/
+.coverage
+htmlcov/
+.mypy_cache/
+.ruff_cache/
+
+# Runtime data
+*.db
+*.db-journal
+*.db-shm
+*.db-wal
+*.log
+receipts_out/
+
+# Editors
+.cursor/
+.vscode/
+.idea/
+
+# macOS
+.DS_Store

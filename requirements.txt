@@ -1,0 +1,4 @@
+PyYAML
+fpdf2
+rich
+prompt_toolkit
