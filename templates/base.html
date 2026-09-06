@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}{{ business.name }}{% endblock %}</title>
+  <link rel="stylesheet" href="/static/app.css">
+</head>
+<body class="{% block bodyclass %}{% endblock %}">
+  <header class="top">
+    <a class="brand" href="/">
+      {{ business.name }}
+      {% if business.description %}<small>{{ business.description }}</small>{% endif %}
+    </a>
+    <nav>
+      <a href="/" class="{{ 'on' if nav == 'chat' else '' }}">צ'אט</a>
+      <a href="/customers" class="{{ 'on' if nav == 'customers' else '' }}">לקוחות</a>
+      <a href="/appointments" class="{{ 'on' if nav == 'appointments' else '' }}">תורים</a>
+      <a href="/leads" class="{{ 'on' if nav == 'leads' else '' }}">לידים</a>
+      <a href="/receipts" class="{{ 'on' if nav == 'receipts' else '' }}">קבלות</a>
+    </nav>
+  </header>
+  <main>
+    {% if ok %}<p class="flash ok">{{ ok }}</p>{% endif %}
+    {% if error %}<p class="flash err">{{ error }}</p>{% endif %}
+    {% block body %}{% endblock %}
+  </main>
+</body>
+</html>

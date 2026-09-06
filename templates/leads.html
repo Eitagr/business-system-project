@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% block title %}לידים · {{ business.name }}{% endblock %}
+{% block body %}
+<section class="head">
+  <h1>לידים</h1>
+</section>
+
+<form class="card" method="post" action="/leads/add">
+  <h2>ליד חדש</h2>
+  <div class="grid">
+    <label>שם <input name="name" required></label>
+    <label>טלפון <input name="phone"></label>
+    <label>דוא״ל <input name="email" type="email"></label>
+    <label>מקור <input name="source"></label>
+    <label>כתובת <input name="address"></label>
+    <label>הערות <input name="notes"></label>
+  </div>
+  <div class="actions">
+    <button type="submit">הוסף</button>
+  </div>
+</form>
+
+<div class="table-wrap">
+  <table>
+    <thead>
+      <tr>
+        <th></th><th>שם</th><th>טלפון</th><th>מקור</th><th>סטטוס</th><th>לקוח</th><th></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in rows %}
+      <tr>
+        <td class="dim">#{{ row.id }}</td>
+        <td>{{ row.name }}</td>
+        <td>{{ row.phone or '' }}</td>
+        <td>{{ row.source or '' }}</td>
+        <td><span class="pill {{ row.status }}">{{ status_he(row.status) }}</span></td>
+        <td>
+          {% if row.customer_id %}
+            {{ names.get(row.customer_id, '#' ~ row.customer_id) }}
+          {% endif %}
+        </td>
+        <td class="row-actions">
+          {% if row.status != 'won' %}
+          <form method="post" action="/leads/{{ row.id }}/convert">
+            <button type="submit">המר ללקוח</button>
+          </form>
+          {% endif %}
+        </td>
+      </tr>
+      {% else %}
+      <tr><td colspan="7" class="empty">אין לידים להצגה.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

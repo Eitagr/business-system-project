@@ -4,15 +4,15 @@ __pycache__/
 *.egg-info/
 build/
 dist/
-receipts_out/
 
 # Virtual environments and secrets
 .venv/
 venv/
 .env
 .env.*
+!.env.example
 
-# Tests and tooling
+# Local caches
 .pytest_cache/
 .coverage
 htmlcov/

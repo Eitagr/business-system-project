@@ -1,0 +1,258 @@
+{% extends "base.html" %}
+{% block title %}תורים · {{ business.name }}{% endblock %}
+{% block bodyclass %}{% if view != 'list' %}wide{% endif %}{% endblock %}
+{% block body %}
+<section class="head">
+  <h1>תורים</h1>
+  <div class="inline">
+    {% if view != 'list' %}
+    <a class="ghost" href="/appointments?view={{ view }}&amp;day={{ prev_day }}{{ '&cal_service=' ~ cal_service if cal_service else '' }}">הקודם</a>
+    <a class="ghost" href="/appointments?view={{ view }}&amp;day={{ next_day }}{{ '&cal_service=' ~ cal_service if cal_service else '' }}">הבא</a>
+    {% endif %}
+    <form class="inline" method="get" action="/appointments">
+      <input type="hidden" name="view" value="day">
+      {% if cal_service %}<input type="hidden" name="cal_service" value="{{ cal_service }}">{% endif %}
+      <input type="date" name="day" value="{{ focus }}" required>
+      <button type="submit" class="ghost">לוח יום</button>
+    </form>
+    <a class="ghost {{ 'on' if view == 'week' else '' }}" href="/appointments?view=week&amp;day={{ focus }}{{ '&cal_service=' ~ cal_service if cal_service else '' }}">השבוע</a>
+    <a class="ghost {{ 'on' if view == 'list' else '' }}" href="/appointments?view=list">כל התורים</a>
+  </div>
+</section>
+
+{% if view != 'list' %}
+<form class="inline cal-filter" method="get" action="/appointments">
+  <input type="hidden" name="view" value="{{ view }}">
+  <input type="hidden" name="day" value="{{ focus }}">
+  <label>סינון משבצות
+    <select name="cal_service">
+      <option value="">כל התאים בשעות הפעילות</option>
+      {% for s in services %}
+      <option value="{{ s.name }}" {% if cal_service == s.name %}selected{% endif %}>{{ s.name }} · {{ s.minutes }} דק׳</option>
+      {% endfor %}
+    </select>
+  </label>
+  <button type="submit" class="ghost">סנן</button>
+</form>
+{% endif %}
+
+{% if editing %}
+<form class="card" method="post" action="/appointments/{{ editing.id }}/reschedule">
+  <h2>תור #{{ editing.id }} · {{ editing.customer_name }}</h2>
+  <input type="hidden" name="view" value="{{ view }}">
+  <input type="hidden" name="day" value="{{ focus }}">
+  {% if cal_service %}<input type="hidden" name="cal_service" value="{{ cal_service }}">{% endif %}
+  <div class="grid">
+    <label>לקוח
+      <select name="customer_id" required {% if editing.status == 'cancelled' %}disabled{% endif %}>
+        {% for c in active_customers %}
+        <option value="{{ c.id }}" {% if editing.customer_id == c.id %}selected{% endif %}>{{ c.name }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label>שירות
+      <select name="service" required {% if editing.status == 'cancelled' %}disabled{% endif %}>
+        {% for s in services %}
+        <option value="{{ s.name }}" {% if editing.service == s.name %}selected{% endif %}>{{ s.name }} · {{ s.minutes }} דק׳</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label>תאריך <input type="date" name="starts_date" required value="{{ editing.date }}" {% if editing.status == 'cancelled' %}disabled{% endif %}></label>
+    <label>שעה <input type="time" name="starts_time" required step="{{ slot_step }}" value="{{ editing.time }}" {% if editing.status == 'cancelled' %}disabled{% endif %}></label>
+  </div>
+  <p class="dim">סטטוס: <span class="pill {{ editing.status }}">{{ status_he(editing.status) }}</span></p>
+  <div class="actions">
+    {% if editing.status != 'cancelled' %}
+    <button type="submit">שמור שינוי</button>
+    {% endif %}
+    <a class="ghost" href="{{ stay }}">סגור</a>
+  </div>
+</form>
+<div class="actions" style="margin-top:-0.75rem;margin-bottom:1.25rem">
+  {% for st in statuses %}
+    {% if st != editing.status %}
+    <form method="post" action="/appointments/{{ editing.id }}/status">
+      <input type="hidden" name="view" value="{{ view }}">
+      <input type="hidden" name="day" value="{{ focus }}">
+      {% if cal_service %}<input type="hidden" name="cal_service" value="{{ cal_service }}">{% endif %}
+      <input type="hidden" name="status" value="{{ st }}">
+      <button type="submit" class="ghost {{ 'danger' if st == 'cancelled' else '' }}">{{ status_he(st) }}</button>
+    </form>
+    {% endif %}
+  {% endfor %}
+</div>
+{% endif %}
+
+{% if book_date and book_time %}
+<form class="card" method="post" action="/appointments/book">
+  <h2>תור חדש · {{ book_date }} {{ book_time }}</h2>
+  <input type="hidden" name="view" value="{{ view }}">
+  <input type="hidden" name="day" value="{{ focus }}">
+  {% if cal_service %}<input type="hidden" name="cal_service" value="{{ cal_service }}">{% endif %}
+  <input type="hidden" name="starts_at" value="{{ book_date }} {{ book_time }}:00">
+  <div class="grid">
+    <label>לקוח
+      <select name="customer_id" required>
+        <option value="" disabled {% if not book_customer %}selected{% endif %}>בחירה</option>
+        {% for c in active_customers %}
+        <option value="{{ c.id }}" {% if book_customer == c.id|string %}selected{% endif %}>{{ c.name }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label>שירות
+      <select name="service" required>
+        <option value="" disabled {% if not book_service %}selected{% endif %}>בחירה</option>
+        {% for s in services %}
+        <option value="{{ s.name }}" {% if book_service == s.name %}selected{% endif %}>{{ s.name }} · {{ s.minutes }} דק׳ · {{ s.price }} {{ currency }}</option>
+        {% endfor %}
+      </select>
+    </label>
+  </div>
+  <div class="actions">
+    <button type="submit">קבע תור</button>
+    <a class="ghost" href="{{ stay }}">ביטול</a>
+  </div>
+</form>
+{% elif not editing %}
+<form class="card" method="get" action="/appointments">
+  <h2>קביעת תור לפי משבצות</h2>
+  <input type="hidden" name="view" value="{{ view }}">
+  <input type="hidden" name="day" value="{{ focus }}">
+  {% if cal_service %}<input type="hidden" name="cal_service" value="{{ cal_service }}">{% endif %}
+  <div class="grid">
+    <label>לקוח
+      <select name="book_customer" required>
+        <option value="" disabled {% if not book_customer %}selected{% endif %}>בחירה</option>
+        {% for c in active_customers %}
+        <option value="{{ c.id }}" {% if book_customer == c.id|string %}selected{% endif %}>{{ c.name }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label>שירות
+      <select name="book_service" required>
+        <option value="" disabled {% if not book_service %}selected{% endif %}>בחירה</option>
+        {% for s in services %}
+        <option value="{{ s.name }}" {% if book_service == s.name %}selected{% endif %}>{{ s.name }} · {{ s.minutes }} דק׳ · {{ s.price }} {{ currency }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label>תאריך <input type="date" name="book_date" required value="{{ book_date or focus }}"></label>
+  </div>
+  <div class="actions">
+    <button type="submit">הצג משבצות פנויות</button>
+  </div>
+</form>
+{% endif %}
+
+{% if slot_error %}<p class="flash err">{{ slot_error }}</p>{% endif %}
+
+{% if book_date and book_service and not book_time and not slot_error %}
+  {% if slots %}
+  <form class="card" method="post" action="/appointments/book">
+    <h2>משבצות ב־{{ book_date }}</h2>
+    <input type="hidden" name="view" value="{{ view }}">
+    <input type="hidden" name="day" value="{{ focus }}">
+    <input type="hidden" name="customer_id" value="{{ book_customer }}">
+    <input type="hidden" name="service" value="{{ book_service }}">
+    <div class="slots">
+      {% for slot in slots %}
+      <label class="slot">
+        <input type="radio" name="starts_at" value="{{ slot.strftime('%Y-%m-%d %H:%M:%S') }}" required>
+        {{ slot.strftime('%H:%M') }}
+      </label>
+      {% endfor %}
+    </div>
+    <div class="actions">
+      <button type="submit">קבע תור</button>
+    </div>
+  </form>
+  {% else %}
+  <p class="flash err">אין משבצות פנויות לתאריך ולשירות שנבחרו.</p>
+  {% endif %}
+{% endif %}
+
+{% if view != 'list' and cal %}
+<div class="cal-wrap">
+  <div class="cal-head {{ 'day-view' if view == 'day' else '' }}">
+    <div class="cal-gutter"></div>
+    {% for d in cal.days %}
+    <div class="cal-col-head {{ 'today' if d.today else '' }} {{ 'closed' if d.closed else '' }}">
+      <strong>{{ d.label }}</strong>
+      <span>{{ d.num }}</span>
+      {% if d.closed %}<span class="dim">סגור</span>{% endif %}
+    </div>
+    {% endfor %}
+  </div>
+  <div class="cal {{ 'day-view' if view == 'day' else '' }}" style="--rows: {{ cal.rows }}">
+    <div class="cal-gutter">
+      {% for label in cal.labels %}
+      <div class="cal-tick">{{ label }}</div>
+      {% endfor %}
+    </div>
+    {% for d in cal.days %}
+    <div class="cal-day {{ 'closed' if d.closed else '' }}">
+      <div class="cal-slots">
+        {% for slot in d.slots %}
+          {% if slot.href %}
+          <a class="cal-empty" href="{{ slot.href }}" title="{{ d.iso }} {{ slot.time }}"></a>
+          {% else %}
+          <div class="cal-empty dead"></div>
+          {% endif %}
+        {% endfor %}
+      </div>
+      <div class="cal-events">
+        {% for item in d.events %}
+        <a class="cal-block {{ item.status }}"
+           style="top: calc({{ item.slot_top }} * var(--slot)); height: calc({{ item.slot_span }} * var(--slot));{% if item.offset %}inset-inline-start:36%;width:32%;{% endif %}"
+           href="/appointments?view={{ view }}&amp;day={{ focus }}&amp;edit={{ item.id }}{{ '&cal_service=' ~ cal_service if cal_service else '' }}">
+          <strong>{{ item.when }}</strong>
+          {{ item.customer_name }}
+          <span>{{ item.service or item.title or '' }}</span>
+        </a>
+        {% endfor %}
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
+
+{% if view == 'list' %}
+<div class="table-wrap">
+  <table>
+    <thead>
+      <tr>
+        <th></th><th>לקוח</th><th>שירות</th><th>התחלה</th><th>סיום</th><th>סטטוס</th><th></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in rows %}
+      <tr>
+        <td class="dim">#{{ row.id }}</td>
+        <td>{{ names.get(row.customer_id, '#' ~ row.customer_id) }}</td>
+        <td>{{ row.service or row.title or '' }}</td>
+        <td>{{ row.starts_at }}</td>
+        <td>{{ row.ends_at }}</td>
+        <td><span class="pill {{ row.status }}">{{ status_he(row.status) }}</span></td>
+        <td class="row-actions">
+          <a class="ghost" href="/appointments?view=list&amp;edit={{ row.id }}">עריכה</a>
+          {% for st in statuses %}
+            {% if st != row.status %}
+            <form method="post" action="/appointments/{{ row.id }}/status">
+              <input type="hidden" name="view" value="list">
+              {% if cal_service %}<input type="hidden" name="cal_service" value="{{ cal_service }}">{% endif %}
+              <input type="hidden" name="status" value="{{ st }}">
+              <button type="submit" class="ghost">{{ status_he(st) }}</button>
+            </form>
+            {% endif %}
+          {% endfor %}
+        </td>
+      </tr>
+      {% else %}
+      <tr><td colspan="7" class="empty">אין תורים להצגה.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endif %}
+{% endblock %}

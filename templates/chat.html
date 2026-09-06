@@ -1,0 +1,100 @@
+{% extends "base.html" %}
+{% block title %}צ'אט · {{ business.name }}{% endblock %}
+{% block bodyclass %}chat-page{% endblock %}
+{% block body %}
+<section class="chat">
+  <header class="chat-head">
+    <div>
+      <h1>אימות תור</h1>
+      <p class="lede">כתבו בעברית חופשית. פרטי התור יוצגו רק אחרי אימות תעודת זהות.</p>
+    </div>
+    <button type="button" class="ghost" id="chat-reset">שיחה חדשה</button>
+  </header>
+  <div class="chat-log" id="chat-log" aria-live="polite">
+    <div class="bubble bot">שלום. איך קוראים לך, ומתי התור? אפשר להתחיל מהדוגמה למטה.</div>
+  </div>
+  <div class="chat-compose">
+    <div class="chat-example">
+      <button type="button" class="chip" id="chat-example">קוראים לי רותם ויש לי תור בתאריך 18.01.2027</button>
+    </div>
+    <form class="chat-form" id="chat-form">
+      <label class="sr-only" for="chat-input">הודעה</label>
+      <input id="chat-input" name="text" autocomplete="off" required placeholder="שם ותאריך התור…">
+      <button type="submit" id="chat-send">שלח</button>
+    </form>
+  </div>
+</section>
+<script>
+(function () {
+  const log = document.getElementById("chat-log");
+  const form = document.getElementById("chat-form");
+  const input = document.getElementById("chat-input");
+  const sendBtn = document.getElementById("chat-send");
+  const reset = document.getElementById("chat-reset");
+  const example = document.getElementById("chat-example");
+  const GOLDEN = "קוראים לי רותם ויש לי תור בתאריך 18.01.2027";
+
+  function add(role, text, kind) {
+    const el = document.createElement("div");
+    el.className = "bubble " + role;
+    if (kind && kind !== "plain") el.classList.add(kind);
+    el.textContent = text;
+    log.appendChild(el);
+    log.scrollTop = log.scrollHeight;
+    return el;
+  }
+
+  async function send(url, body) {
+    const res = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: body ? JSON.stringify(body) : "{}",
+    });
+    if (!res.ok) throw new Error("network");
+    return res.json();
+  }
+
+  function busy(on) {
+    sendBtn.disabled = on;
+    input.disabled = on;
+  }
+
+  form.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const text = input.value.trim();
+    if (!text || sendBtn.disabled) return;
+    add("user", text);
+    input.value = "";
+    busy(true);
+    const wait = add("bot", "שולח…", "pending");
+    try {
+      const data = await send("/chat/message", { text: text });
+      wait.remove();
+      add("bot", data.reply || "", data.kind);
+    } catch (err) {
+      wait.remove();
+      add("bot", "לא הצלחתי לשלוח את ההודעה. נסו שוב.");
+    }
+    busy(false);
+    input.focus();
+  });
+
+  example.addEventListener("click", () => {
+    input.value = GOLDEN;
+    input.focus();
+  });
+
+  reset.addEventListener("click", async () => {
+    try {
+      const data = await send("/chat/reset");
+      log.innerHTML = "";
+      add("bot", data.reply || "שיחה חדשה.");
+    } catch (err) {
+      add("bot", "לא הצלחתי לאפס את השיחה.");
+    }
+    busy(false);
+    input.focus();
+  });
+})();
+</script>
+{% endblock %}

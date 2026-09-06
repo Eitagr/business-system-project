@@ -25,7 +25,10 @@ class Database:
     def __init__(self, directory: Path = DB_DIR) -> None:
         self.conns = {}
         for table, filename in DB_FILES.items():
-            conn = sqlite3.connect(directory / filename)
+            # FastAPI may run a dependency on a worker thread and the route
+            # on another; sqlite's default thread check would then reject
+            # the connection. Each Database() is still closed per request.
+            conn = sqlite3.connect(directory / filename, check_same_thread=False)
             conn.row_factory = sqlite3.Row
             self.conns[table] = conn
         self._migrate()
@@ -64,6 +67,12 @@ class Database:
                 if default is not None:
                     clause += f" DEFAULT {default}"
                 conn.execute(clause)
+            if table == "customers":
+                # ADD COLUMN does not copy UNIQUE from CREATE TABLE.
+                conn.execute(
+                    "CREATE UNIQUE INDEX IF NOT EXISTS idx_customers_national_id "
+                    "ON customers(national_id)"
+                )
             conn.commit()
         scratch.close()
 
@@ -85,11 +94,12 @@ class Database:
 
     # --- customers ----------------------------------------------------------
 
-    def add_customer(self, name, phone, email, address, age) -> int:
+    def add_customer(self, name, phone, email, address, age, national_id=None) -> int:
         return self._write(
             "customers",
-            "INSERT INTO customers (name, phone, email, address, age) VALUES (?, ?, ?, ?, ?)",
-            (name, phone, email, address, age),
+            "INSERT INTO customers (name, phone, email, address, age, national_id) "
+            "VALUES (?, ?, ?, ?, ?, ?)",
+            (name, phone, email, address, age, national_id),
         ).lastrowid
 
     def get_customer(self, customer_id):
@@ -115,12 +125,20 @@ class Database:
             (like, like),
         )
 
-    def update_customer(self, customer_id, name, phone, email, address, age) -> bool:
+    def find_customers_by_name(self, term) -> list:
+        like = f"%{term}%"
+        return self._rows(
+            "customers",
+            "SELECT * FROM customers WHERE active = 1 AND name LIKE ? ORDER BY name",
+            (like,),
+        )
+
+    def update_customer(self, customer_id, name, phone, email, address, age, national_id=None) -> bool:
         return self._write(
             "customers",
-            "UPDATE customers SET name = ?, phone = ?, email = ?, address = ?, age = ? "
-            "WHERE id = ?",
-            (name, phone, email, address, age, customer_id),
+            "UPDATE customers SET name = ?, phone = ?, email = ?, address = ?, age = ?, "
+            "national_id = ? WHERE id = ?",
+            (name, phone, email, address, age, national_id, customer_id),
         ).rowcount > 0
 
     def set_customer_active(self, customer_id, active: bool) -> bool:
@@ -179,6 +197,14 @@ class Database:
             "appointments",
             "UPDATE appointments SET status = ? WHERE id = ?",
             (status, appointment_id),
+        ).rowcount > 0
+
+    def update_appointment(self, appointment_id, customer_id, service, starts_at, ends_at) -> bool:
+        return self._write(
+            "appointments",
+            "UPDATE appointments SET customer_id = ?, service = ?, starts_at = ?, ends_at = ? "
+            "WHERE id = ?",
+            (customer_id, service, starts_at, ends_at, appointment_id),
         ).rowcount > 0
 
     # --- leads --------------------------------------------------------------

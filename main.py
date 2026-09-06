@@ -344,6 +344,7 @@ def add_customer(db, config) -> None:
         ask_email("Email (optional)"),
         ask("Address (optional)"),
         ask_age("Age (optional)"),
+        ask("National ID (optional, 9 digits)"),
     )
     ok(f"Added customer #{customer_id}.")
 
@@ -369,7 +370,10 @@ def edit_customer(db, config) -> None:
     age = ask_age("Age", notice=hint)
     if age is None:
         age = current["age"]
-    customers.update(db, customer_id, name, phone, email, address, age)
+    national_id = ask("National ID", notice=hint)
+    if not national_id:
+        national_id = current["national_id"]
+    customers.update(db, customer_id, name, phone, email, address, age, national_id)
     ok(f"Updated customer #{customer_id}.")
 
 

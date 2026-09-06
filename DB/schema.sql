@@ -9,6 +9,7 @@ CREATE TABLE IF NOT EXISTS customers (
     email         TEXT UNIQUE,
     address       TEXT,
     age           INTEGER,
+    national_id   TEXT UNIQUE,  -- 9 digits; NULL allowed (converted leads have none)
     active        INTEGER NOT NULL DEFAULT 1,  -- 1 = active, 0 = soft-deleted
     created_at    DATETIME DEFAULT (datetime('now'))
 );

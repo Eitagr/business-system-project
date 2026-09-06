@@ -17,6 +17,7 @@ from Features import customers
 from Features.appointments import service_by_name
 
 OUTPUT_DIR = Path(__file__).parent.parent / "receipts_out"
+HEBREW_FONT = Path(__file__).parent.parent / "static" / "fonts" / "NotoSansHebrew-Regular.ttf"
 
 
 class ReceiptError(Exception):
@@ -105,50 +106,59 @@ def _minutes_between(starts_at, ends_at) -> int:
     return int(delta.total_seconds() // 60)
 
 
+def _has_hebrew(text) -> bool:
+    return any("\u0590" <= ch <= "\u05FF" for ch in text or "")
+
+
 def render_pdf(receipt, business) -> Path:
     OUTPUT_DIR.mkdir(exist_ok=True)
     pdf = FPDF(format="A4")
     pdf.add_page()
-    pdf.set_font("Helvetica", "B", 16)
-    pdf.cell(0, 10, business["name"], new_x="LMARGIN", new_y="NEXT")
-    pdf.set_font("Helvetica", "", 10)
-    for line in (business.get("address") or business.get("location"), business.get("phone")):
-        if line:
-            pdf.cell(0, 6, line, new_x="LMARGIN", new_y="NEXT")
+    hebrew = HEBREW_FONT.is_file()
+    if hebrew:
+        # ponytail: the bundled TTF is Hebrew-script only. Latin lines stay on
+        # Helvetica; a mixed Hebrew+Latin string in one cell will miss glyphs.
+        pdf.add_font("NotoHe", "", str(HEBREW_FONT))
+        pdf.add_font("NotoHe", "B", str(HEBREW_FONT))
 
-    pdf.ln(6)
-    pdf.set_font("Helvetica", "B", 14)
-    pdf.cell(0, 8, f"Receipt {receipt['number']}", new_x="LMARGIN", new_y="NEXT")
-    pdf.set_font("Helvetica", "", 10)
-    pdf.cell(0, 6, f"Issued: {receipt['issued_at']}", new_x="LMARGIN", new_y="NEXT")
+    def font(style="", size=10, text=""):
+        if hebrew and _has_hebrew(text):
+            pdf.set_font("NotoHe", style, size)
+        else:
+            pdf.set_font("Helvetica", style, size)
 
+    def line(text, size=10, bold=False, h=6):
+        if not text:
+            return
+        font("B" if bold else "", size, text)
+        pdf.cell(0, h, text, new_x="LMARGIN", new_y="NEXT")
+
+    line(business["name"], 16, bold=True, h=10)
+    font("", 10)
+    for item in (business.get("address") or business.get("location"), business.get("phone")):
+        line(item, 10)
     pdf.ln(6)
-    pdf.set_font("Helvetica", "B", 11)
-    pdf.cell(0, 6, "Bill to", new_x="LMARGIN", new_y="NEXT")
-    pdf.set_font("Helvetica", "", 10)
-    for line in (
+    line(f"Receipt {receipt['number']}", 14, bold=True, h=8)
+    line(f"Issued: {receipt['issued_at']}", 10)
+    pdf.ln(6)
+    line("Bill to", 11, bold=True)
+    for item in (
         receipt["customer_name"],
         receipt["customer_phone"],
         receipt["customer_email"],
         receipt["customer_address"],
     ):
-        if line:
-            pdf.cell(0, 6, line, new_x="LMARGIN", new_y="NEXT")
-
+        line(item, 10)
     pdf.ln(6)
-    pdf.set_font("Helvetica", "B", 11)
-    pdf.cell(0, 6, "Service", new_x="LMARGIN", new_y="NEXT")
-    pdf.set_font("Helvetica", "", 10)
+    line("Service", 11, bold=True)
     detail = receipt["service"] or "Appointment"
     if receipt["appointment_starts_at"]:
         detail += f"  ({receipt['appointment_starts_at']}"
         detail += f", {receipt['service_minutes']} min)" if receipt["service_minutes"] else ")"
-    pdf.cell(0, 6, detail, new_x="LMARGIN", new_y="NEXT")
-
+    line(detail, 10)
     pdf.ln(8)
-    pdf.set_font("Helvetica", "B", 13)
     currency = business.get("currency", "")
-    pdf.cell(0, 8, f"Total: {receipt['amount']:.2f} {currency}", new_x="LMARGIN", new_y="NEXT")
+    line(f"Total: {receipt['amount']:.2f} {currency}", 13, bold=True, h=8)
 
     path = OUTPUT_DIR / f"{receipt['number']}.pdf"
     pdf.output(str(path))
