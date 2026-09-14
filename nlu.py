@@ -1,5 +1,4 @@
-# Gemini extraction and phrasing. Falls back to a tiny regex for the
-# course's golden utterance when the API key is missing or the call fails.
+# Gemini extraction and phrasing. Regex fallback is only for check_chat.py.
 
 import json
 import os
@@ -32,6 +31,18 @@ _DATE_ISO = re.compile(r"(\d{4})-(\d{2})-(\d{2})")
 _JSON_OBJECT = re.compile(r"\{.*\}", re.DOTALL)
 
 MODEL = "gemini-2.0-flash"
+
+
+class NLUError(Exception):
+    """Gemini is required but missing, or the call failed."""
+
+
+def configured() -> bool:
+    return bool(os.environ.get("GEMINI_API_KEY", "").strip())
+
+
+def source() -> str:
+    return "gemini" if configured() else "missing"
 
 
 def _parse_date(text):
@@ -94,38 +105,31 @@ def _load_json(raw) -> dict | None:
 
 
 def _model():
-    key = os.environ.get("GEMINI_API_KEY", "").strip()
-    if not key:
-        return None
-    try:
-        import google.generativeai as genai
+    if not configured():
+        raise NLUError("GEMINI_API_KEY is missing")
+    import google.generativeai as genai
 
-        genai.configure(api_key=key)
-        return genai.GenerativeModel(MODEL)
-    except Exception:
-        return None
+    genai.configure(api_key=os.environ["GEMINI_API_KEY"].strip())
+    return genai.GenerativeModel(MODEL)
 
 
-def _gemini(prompt) -> str | None:
-    try:
-        model = _model()
-        if model is None:
-            return None
-        response = model.generate_content(
-            prompt,
-            generation_config={"temperature": 0},
-        )
-        return (response.text or "").strip()
-    except Exception:
-        return None
+def _gemini(prompt) -> str:
+    response = _model().generate_content(
+        prompt,
+        generation_config={"temperature": 0},
+    )
+    text = (response.text or "").strip()
+    if not text:
+        raise NLUError("Gemini returned an empty reply")
+    return text
 
 
 def extract(text) -> dict:
     parsed = _load_json(_gemini(EXTRACT_PROMPT + (text or "")))
-    if parsed and parsed.get("name"):
-        return parsed
-    return fallback_extract(text)
+    if parsed is None:
+        raise NLUError("Gemini did not return JSON")
+    return parsed
 
 
-def phrase(facts: dict) -> str | None:
+def phrase(facts: dict) -> str:
     return _gemini(PHRASE_PROMPT + json.dumps(facts, ensure_ascii=False))

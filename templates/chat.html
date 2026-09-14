@@ -7,6 +7,7 @@
     <div>
       <h1>אימות תור</h1>
       <p class="lede">כתבו בעברית חופשית. פרטי התור יוצגו רק אחרי אימות תעודת זהות.</p>
+      <p class="nlu-status {{ 'on' if gemini else 'off' }}" id="nlu-status">{% if gemini %}Gemini פעיל{% else %}חסר מפתח Gemini{% endif %}</p>
     </div>
     <button type="button" class="ghost" id="chat-reset">שיחה חדשה</button>
   </header>
@@ -44,6 +45,14 @@
     return el;
   }
 
+  function setNlu(source) {
+    const el = document.getElementById("nlu-status");
+    if (!el) return;
+    const on = source === "gemini";
+    el.textContent = on ? "Gemini פעיל" : "חסר מפתח Gemini";
+    el.className = "nlu-status " + (on ? "on" : "off");
+  }
+
   async function send(url, body) {
     const res = await fetch(url, {
       method: "POST",
@@ -70,6 +79,7 @@
     try {
       const data = await send("/chat/message", { text: text });
       wait.remove();
+      setNlu(data.nlu);
       add("bot", data.reply || "", data.kind);
     } catch (err) {
       wait.remove();
@@ -88,6 +98,7 @@
     try {
       const data = await send("/chat/reset");
       log.innerHTML = "";
+      setNlu(data.nlu);
       add("bot", data.reply || "שיחה חדשה.");
     } catch (err) {
       add("bot", "לא הצלחתי לאפס את השיחה.");

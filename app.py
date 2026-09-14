@@ -15,6 +15,7 @@ from fastapi.templating import Jinja2Templates
 from starlette.middleware.sessions import SessionMiddleware
 
 import chat as chat_engine
+import nlu
 from DB.db_adapter import Database
 from DB.seed_demo import ensure as ensure_demo
 from Features import appointments, customers, leads, receipts
@@ -353,7 +354,9 @@ def _startup():
 
 @app.api_route("/", methods=["GET", "HEAD"])
 def home(request: Request):
-    return templates.TemplateResponse(request, "chat.html", {"nav": "chat"})
+    return templates.TemplateResponse(
+        request, "chat.html", {"nav": "chat", "gemini": nlu.configured()}
+    )
 
 
 @app.post("/chat/message")
@@ -362,13 +365,21 @@ def chat_message(payload: dict, request: Request, db: Database = Depends(get_db)
     state = dict(request.session.get("chat") or chat_engine.new_session())
     reply, state = chat_engine.handle(db, state, text)
     request.session["chat"] = state
-    return {"reply": reply, "kind": chat_engine.kind_of(reply, state)}
+    return {
+        "reply": reply,
+        "kind": chat_engine.kind_of(reply, state),
+        "nlu": nlu.source(),
+    }
 
 
 @app.post("/chat/reset")
 def chat_reset(request: Request):
     request.session["chat"] = chat_engine.new_session()
-    return {"reply": "שיחה חדשה. איך קוראים לך, ומתי התור?", "kind": "plain"}
+    return {
+        "reply": "שיחה חדשה. איך קוראים לך, ומתי התור?",
+        "kind": "plain",
+        "nlu": nlu.source(),
+    }
 
 
 # --- customers --------------------------------------------------------------

@@ -107,6 +107,11 @@ def _load_candidates(db, ids):
     return rows
 
 
+def _nlu_ready(nlu) -> bool:
+    check = getattr(nlu, "configured", None)
+    return check() if callable(check) else True
+
+
 def _verified_reply(db, customer, claimed_date, nlu) -> str:
     rows = [dict(row) for row in appointments.open_for_customer(db, customer["id"])]
     facts = {
@@ -128,6 +133,9 @@ def _verified_reply(db, customer, claimed_date, nlu) -> str:
 
 def kind_of(reply, session) -> str:
     """UI hint only. Never 'verified' unless handle already passed verify_id."""
+    tagged = (session or {}).get("kind")
+    if tagged:
+        return tagged
     state = (session or {}).get("state")
     if state == BLOCKED:
         return "blocked"
@@ -135,14 +143,13 @@ def kind_of(reply, session) -> str:
         return "clarify"
     if state == ASK_ID:
         return "ask_id"
-    if (reply or "").startswith("מצאתי אותך"):
-        return "verified"
     return "plain"
 
 
 def handle(db, session, text, nlu=None):
     nlu = nlu or default_nlu
     session = dict(session or new_session())
+    session.pop("kind", None)
     session.setdefault("state", IDLE)
     session.setdefault("candidate_ids", [])
     session.setdefault("claimed_date", None)
@@ -156,7 +163,15 @@ def handle(db, session, text, nlu=None):
         return "כתבו הודעה קצרה — שם ותאריך התור אם יש.", session
 
     if session["state"] == IDLE:
-        extracted = nlu.extract(text) or {}
+        if not _nlu_ready(nlu):
+            return (
+                "חסר מפתח Gemini. הוסיפו GEMINI_API_KEY לקובץ .env והפעילו מחדש.",
+                session,
+            )
+        try:
+            extracted = nlu.extract(text) or {}
+        except Exception:
+            return "לא הצלחתי לקרוא את Gemini. נסו שוב.", session
         name = (extracted.get("name") or "").strip()
         session["claimed_date"] = extracted.get("claimed_date")
         if not name:
@@ -203,6 +218,7 @@ def handle(db, session, text, nlu=None):
         if customers.verify_id(db, customer["id"], offered):
             reply = _verified_reply(db, customer, session.get("claimed_date"), nlu)
             session = new_session()
+            session["kind"] = "verified"
             return reply, session
         session["attempts"] = int(session.get("attempts") or 0) + 1
         left = MAX_ATTEMPTS - session["attempts"]

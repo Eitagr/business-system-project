@@ -65,6 +65,8 @@ def _run():
         if "זהות" not in r2:
             raise AssertionError(f"expected ID prompt, got {r2!r}")
         r3, session = _talk(db, session, "123456789", nlu)
+        if chat.kind_of(r3, session) != "verified":
+            raise AssertionError(f"expected kind verified, got {chat.kind_of(r3, session)!r}")
         if "19.01.2027" not in r3 or "19:00" not in r3:
             raise AssertionError(f"expected corrected slot, got {r3!r}")
         if "18.01" not in r3:
@@ -142,6 +144,44 @@ def _run():
         if session["state"] != chat.IDLE:
             raise AssertionError(f"expected idle after refuse, got {session['state']}")
 
+    def missing_gemini_key(db):
+        class Missing:
+            def configured(self):
+                return False
+
+            def extract(self, text):
+                raise AssertionError("must not extract without a key")
+
+            def phrase(self, facts):
+                raise AssertionError("must not phrase without a key")
+
+        session = chat.new_session()
+        r, session = _talk(db, session, "קוראים לי רותם ויש לי תור בתאריך 18.01.2027", Missing())
+        if "GEMINI_API_KEY" not in r:
+            raise AssertionError(f"expected missing-key message, got {r!r}")
+        if "19:00" in r or "19.01" in r:
+            raise AssertionError(f"leaked appointment without Gemini: {r!r}")
+        if session["state"] != chat.IDLE:
+            raise AssertionError(f"expected idle, got {session['state']}")
+
+    def verified_kind_from_gemini_wording(db):
+        class Phrasing:
+            def extract(self, text):
+                return fallback_extract(text)
+
+            def phrase(self, facts):
+                return "התור בפועל ב-19.01.2027 בשעה 19:00 (ולא ב-18.01)."
+
+        nlu_phrase = Phrasing()
+        session = chat.new_session()
+        _, session = _talk(db, session, "קוראים לי רותם מירון ויש לי תור בתאריך 18.01.2027", nlu_phrase)
+        _, session = _talk(db, session, "כן", nlu_phrase)
+        r3, session = _talk(db, session, "123456789", nlu_phrase)
+        if chat.kind_of(r3, session) != "verified":
+            raise AssertionError(f"kind must not depend on template wording, got {chat.kind_of(r3, session)!r} for {r3!r}")
+        if "19:00" not in r3:
+            raise AssertionError(f"expected slot in Gemini wording, got {r3!r}")
+
     check("1 unique name + wrong date", unique_wrong_date)
     check("2 ambiguous first name", ambiguous_name)
     check("3 wrong national id", wrong_id)
@@ -149,6 +189,8 @@ def _run():
     check("5 unknown name", unknown_name)
     check("7 national id in first message", id_in_first_message)
     check("8 converted lead without national id", converted_without_id)
+    check("9 live chat requires Gemini key", missing_gemini_key)
+    check("10 verified kind from Gemini wording", verified_kind_from_gemini_wording)
 
     tmp = Path(tempfile.mkdtemp())
     db = Database(directory=tmp)

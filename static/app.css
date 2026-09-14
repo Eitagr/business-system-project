@@ -375,6 +375,14 @@ body.chat-page main {
 
 .lede { margin: 0.35rem 0 0; color: var(--muted); font-size: 0.95rem; }
 
+.nlu-status {
+  margin: 0.4rem 0 0;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+.nlu-status.on { color: var(--accent); }
+.nlu-status.off { color: var(--err-ink); }
+
 .chat-log {
   flex: 1;
   overflow-y: auto;
