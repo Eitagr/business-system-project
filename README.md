@@ -6,7 +6,7 @@ verifies a national ID, and then shows the real appointment — including a
 correction when the claimed date is wrong.
 
 Local run and server update (`git pull` + restart): [DEPLOY.md](DEPLOY.md).
-Golden conversation: [DEMO.md](DEMO.md).
+Screen recording of the golden chat: [demo.webm](demo.webm).
 
 ## Run
 
@@ -37,7 +37,7 @@ Edit `config.yaml` for business name, hours, and services.
 ```
 README.md              - this file
 DEPLOY.md              - local run, server update, PR review
-DEMO.md                - golden conversation transcript
+demo.webm              - screen recording of the golden chat
 app.py                 - web: pages, forms, chat HTTP
 chat.py                - conversation state; no SQL, no HTTP
 nlu.py                 - Gemini extract/phrase (required for live chat)

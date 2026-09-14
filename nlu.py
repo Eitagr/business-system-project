@@ -30,7 +30,7 @@ _DATE_DOT = re.compile(r"(\d{1,2})\.(\d{1,2})\.(\d{4})")
 _DATE_ISO = re.compile(r"(\d{4})-(\d{2})-(\d{2})")
 _JSON_OBJECT = re.compile(r"\{.*\}", re.DOTALL)
 
-MODEL = "gemini-2.0-flash"
+MODEL = "gemini-3.6-flash"
 
 
 class NLUError(Exception):

@@ -27,8 +27,8 @@ Open http://127.0.0.1:8000
 
 The chat header must read **Gemini פעיל**. Staff pages are in the top nav.
 
-Pasted golden conversation (identification → clarification → ID → date
-correction): [DEMO.md](DEMO.md).
+Screen recording (identification → clarification → ID → date correction):
+[demo.webm](demo.webm).
 
 Submission scenarios (no API key, no network — a local NLU double):
 

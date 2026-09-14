@@ -9,7 +9,7 @@ import urllib.request
 
 import google.generativeai as genai
 
-MODEL = "gemini-2.0-flash"
+MODEL = "gemini-3.6-flash"
 MAX_DIFF = 24000
 
 PROMPT = """\
