@@ -1,0 +1,11 @@
+PyYAML
+fpdf2
+rich
+prompt_toolkit
+fastapi
+jinja2
+python-multipart
+uvicorn
+python-dotenv
+google-generativeai
+itsdangerous

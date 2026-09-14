@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% block title %}קבלות · {{ business.name }}{% endblock %}
+{% block body %}
+<section class="head">
+  <h1>קבלות</h1>
+</section>
+
+<form class="card" method="post" action="/receipts/issue">
+  <h2>הנפקה מתור</h2>
+  <div class="grid">
+    <label>תור
+      <select name="appointment_id" required>
+        <option value="" disabled selected>בחירה</option>
+        {% for a in eligible %}
+        <option value="{{ a.id }}">#{{ a.id }} · {{ a.customer_name }} · {{ a.service or a.title }} · {{ a.starts_at }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label>סכום (ריק = מחיר השירות)
+      <input name="amount" inputmode="decimal" placeholder="{{ currency }}">
+    </label>
+  </div>
+  <div class="actions">
+    <button type="submit" {% if not eligible %}disabled{% endif %}>הנפק קבלה</button>
+  </div>
+  {% if not eligible %}<p class="dim">אין תורים שטרם הונפקה להם קבלה.</p>{% endif %}
+</form>
+
+<div class="table-wrap">
+  <table>
+    <thead>
+      <tr>
+        <th></th><th>מספר</th><th>לקוח</th><th>שירות</th><th>סכום</th><th>הונפקה</th><th></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in rows %}
+      <tr>
+        <td class="dim">#{{ row.id }}</td>
+        <td>{{ row.number }}</td>
+        <td>{{ row.customer_name or '' }}</td>
+        <td>{{ row.service or '' }}</td>
+        <td>{{ '%.2f'|format(row.amount) }} {{ currency }}</td>
+        <td>{{ row.issued_at }}</td>
+        <td class="row-actions">
+          <a class="ghost" href="/receipts/{{ row.id }}/pdf">PDF</a>
+          <form method="post" action="/receipts/{{ row.id }}/reprint">
+            <button type="submit" class="ghost">הפקה מחדש</button>
+          </form>
+        </td>
+      </tr>
+      {% else %}
+      <tr><td colspan="7" class="empty">אין קבלות להצגה.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}
